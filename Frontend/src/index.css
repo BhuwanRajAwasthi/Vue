@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+:root { --brand-blue: #1769aa; --brand-blue-dark: #124d80; --brand-ink: #15233d; }
+body { background: #f7fbff; color: var(--brand-ink); }
+.site-header { background: #f7fbff !important; border-color: #d5e2f0 !important; }
+.nav-link, .logout { color: var(--brand-blue-dark) !important; }
+.avatar, .primary-button, .checkout-btn { background: var(--brand-blue) !important; }
+.hero-section { background: linear-gradient(130deg, #102f52 0%, #1769aa 55%, #3d8bc5 100%) !important; }
+.product-card, .order-card, .profile-card, .panel-card { border-color: #d5e2f0 !important; }
+.category-pill-btn.active, .category-pill-btn:hover, .btn-quick-add.added { background: var(--brand-blue) !important; border-color: var(--brand-blue) !important; }
+.search_input, .controls-bar input, .profile-card input, .profile-card select { border-color: #bfd4e8 !important; }

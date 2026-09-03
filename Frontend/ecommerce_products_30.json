@@ -1,0 +1,272 @@
+[
+  {
+    "name": "Classic Cotton T-Shirt",
+    "description": "Soft cotton T-shirt for comfortable everyday wear.",
+    "category": "Men's Clothing",
+    "price": 1299,
+    "stock": 35,
+    "brand": "UrbanWear",
+    "image": "https://picsum.photos/seed/ecommerce-1/800/800"
+  },
+  {
+    "name": "Premium Hoodie",
+    "description": "Warm pullover hoodie with a soft inner lining and relaxed fit.",
+    "category": "Men's Clothing",
+    "price": 2499,
+    "stock": 20,
+    "brand": "UrbanWear",
+    "image": "https://picsum.photos/seed/ecommerce-2/800/800"
+  },
+  {
+    "name": "Denim Jacket",
+    "description": "Classic blue denim jacket suitable for casual outfits.",
+    "category": "Men's Clothing",
+    "price": 3499,
+    "stock": 15,
+    "brand": "BluePeak",
+    "image": "https://picsum.photos/seed/ecommerce-3/800/800"
+  },
+  {
+    "name": "Casual Oxford Shirt",
+    "description": "Smart casual cotton Oxford shirt for everyday and semi-formal wear.",
+    "category": "Men's Clothing",
+    "price": 1899,
+    "stock": 28,
+    "brand": "NorthStyle",
+    "image": "https://picsum.photos/seed/ecommerce-4/800/800"
+  },
+  {
+    "name": "Running Sneakers",
+    "description": "Lightweight sneakers designed for walking, running, and daily use.",
+    "category": "Footwear",
+    "price": 3299,
+    "stock": 18,
+    "brand": "StrideX",
+    "image": "https://picsum.photos/seed/ecommerce-5/800/800"
+  },
+  {
+    "name": "Canvas Backpack",
+    "description": "Durable everyday backpack with multiple compartments.",
+    "category": "Bags",
+    "price": 2199,
+    "stock": 22,
+    "brand": "CarryPro",
+    "image": "https://picsum.photos/seed/ecommerce-6/800/800"
+  },
+  {
+    "name": "Leather Wallet",
+    "description": "Compact wallet with multiple card slots and a cash compartment.",
+    "category": "Accessories",
+    "price": 999,
+    "stock": 40,
+    "brand": "CraftLine",
+    "image": "https://picsum.photos/seed/ecommerce-7/800/800"
+  },
+  {
+    "name": "Classic Wrist Watch",
+    "description": "Minimal analog wrist watch with a clean everyday design.",
+    "category": "Watches",
+    "price": 2799,
+    "stock": 12,
+    "brand": "TimeCraft",
+    "image": "https://picsum.photos/seed/ecommerce-8/800/800"
+  },
+  {
+    "name": "Polarized Sunglasses",
+    "description": "Stylish sunglasses with polarized lenses for outdoor use.",
+    "category": "Accessories",
+    "price": 1599,
+    "stock": 25,
+    "brand": "VisionPro",
+    "image": "https://picsum.photos/seed/ecommerce-9/800/800"
+  },
+  {
+    "name": "Baseball Cap",
+    "description": "Adjustable cotton cap suitable for casual outdoor wear.",
+    "category": "Accessories",
+    "price": 799,
+    "stock": 30,
+    "brand": "UrbanWear",
+    "image": "https://picsum.photos/seed/ecommerce-10/800/800"
+  },
+  {
+    "name": "Wireless Bluetooth Headphones",
+    "description": "Over-ear wireless headphones with comfortable ear cushions.",
+    "category": "Electronics",
+    "price": 4999,
+    "stock": 14,
+    "brand": "SoundMax",
+    "image": "https://picsum.photos/seed/ecommerce-11/800/800"
+  },
+  {
+    "name": "Mechanical Gaming Keyboard",
+    "description": "Mechanical keyboard with tactile switches for gaming and typing.",
+    "category": "Electronics",
+    "price": 4599,
+    "stock": 16,
+    "brand": "KeyForge",
+    "image": "https://picsum.photos/seed/ecommerce-12/800/800"
+  },
+  {
+    "name": "Wireless Gaming Mouse",
+    "description": "Ergonomic wireless mouse designed for responsive gaming.",
+    "category": "Electronics",
+    "price": 2999,
+    "stock": 24,
+    "brand": "GameTech",
+    "image": "https://picsum.photos/seed/ecommerce-13/800/800"
+  },
+  {
+    "name": "Portable Bluetooth Speaker",
+    "description": "Compact portable speaker for music at home or outdoors.",
+    "category": "Electronics",
+    "price": 2599,
+    "stock": 20,
+    "brand": "SoundMax",
+    "image": "https://picsum.photos/seed/ecommerce-14/800/800"
+  },
+  {
+    "name": "Smart Watch",
+    "description": "Fitness-focused smartwatch with activity and notification tracking.",
+    "category": "Electronics",
+    "price": 5999,
+    "stock": 10,
+    "brand": "FitPulse",
+    "image": "https://picsum.photos/seed/ecommerce-15/800/800"
+  },
+  {
+    "name": "USB-C Fast Charger",
+    "description": "Compact fast charger compatible with modern USB-C devices.",
+    "category": "Electronics",
+    "price": 1299,
+    "stock": 32,
+    "brand": "VoltPro",
+    "image": "https://picsum.photos/seed/ecommerce-16/800/800"
+  },
+  {
+    "name": "Stainless Steel Water Bottle",
+    "description": "Reusable insulated bottle for keeping beverages at a stable temperature.",
+    "category": "Home & Kitchen",
+    "price": 1499,
+    "stock": 35,
+    "brand": "HydroLife",
+    "image": "https://picsum.photos/seed/ecommerce-17/800/800"
+  },
+  {
+    "name": "Ceramic Coffee Mug",
+    "description": "Simple ceramic mug suitable for coffee, tea, and hot drinks.",
+    "category": "Home & Kitchen",
+    "price": 599,
+    "stock": 45,
+    "brand": "HomeCraft",
+    "image": "https://picsum.photos/seed/ecommerce-18/800/800"
+  },
+  {
+    "name": "Non-Stick Frying Pan",
+    "description": "Durable non-stick frying pan for everyday cooking.",
+    "category": "Home & Kitchen",
+    "price": 1899,
+    "stock": 17,
+    "brand": "KitchenPro",
+    "image": "https://picsum.photos/seed/ecommerce-19/800/800"
+  },
+  {
+    "name": "LED Desk Lamp",
+    "description": "Adjustable LED desk lamp for study and office work.",
+    "category": "Home & Kitchen",
+    "price": 1699,
+    "stock": 23,
+    "brand": "BrightHome",
+    "image": "https://picsum.photos/seed/ecommerce-20/800/800"
+  },
+  {
+    "name": "Wireless Earbuds",
+    "description": "Compact true wireless earbuds with a portable charging case.",
+    "category": "Electronics",
+    "price": 3499,
+    "stock": 19,
+    "brand": "SoundMax",
+    "image": "https://picsum.photos/seed/ecommerce-21/800/800"
+  },
+  {
+    "name": "Laptop Sleeve",
+    "description": "Protective padded sleeve designed for everyday laptop carrying.",
+    "category": "Bags",
+    "price": 1299,
+    "stock": 27,
+    "brand": "CarryPro",
+    "image": "https://picsum.photos/seed/ecommerce-22/800/800"
+  },
+  {
+    "name": "Sports Duffle Bag",
+    "description": "Spacious duffle bag for gym sessions, travel, and sports gear.",
+    "category": "Bags",
+    "price": 1999,
+    "stock": 21,
+    "brand": "ActiveGear",
+    "image": "https://picsum.photos/seed/ecommerce-23/800/800"
+  },
+  {
+    "name": "Yoga Mat",
+    "description": "Comfortable non-slip exercise mat for yoga and home workouts.",
+    "category": "Sports",
+    "price": 1199,
+    "stock": 26,
+    "brand": "ActiveGear",
+    "image": "https://picsum.photos/seed/ecommerce-24/800/800"
+  },
+  {
+    "name": "Football",
+    "description": "Durable training football suitable for recreational play.",
+    "category": "Sports",
+    "price": 1499,
+    "stock": 18,
+    "brand": "GoalPro",
+    "image": "https://picsum.photos/seed/ecommerce-25/800/800"
+  },
+  {
+    "name": "Chess Set",
+    "description": "Classic chess set for casual games and practice.",
+    "category": "Games",
+    "price": 999,
+    "stock": 15,
+    "brand": "MindPlay",
+    "image": "https://picsum.photos/seed/ecommerce-26/800/800"
+  },
+  {
+    "name": "Digital Kitchen Scale",
+    "description": "Compact digital scale for accurate kitchen measurements.",
+    "category": "Home & Kitchen",
+    "price": 1099,
+    "stock": 20,
+    "brand": "KitchenPro",
+    "image": "https://picsum.photos/seed/ecommerce-27/800/800"
+  },
+  {
+    "name": "Power Bank 10000mAh",
+    "description": "Portable power bank for charging phones and small devices.",
+    "category": "Electronics",
+    "price": 2299,
+    "stock": 18,
+    "brand": "VoltPro",
+    "image": "https://picsum.photos/seed/ecommerce-28/800/800"
+  },
+  {
+    "name": "Wireless Mouse",
+    "description": "Compact wireless mouse suitable for laptops and office work.",
+    "category": "Electronics",
+    "price": 1199,
+    "stock": 31,
+    "brand": "KeyForge",
+    "image": "https://picsum.photos/seed/ecommerce-29/800/800"
+  },
+  {
+    "name": "Minimal Desk Organizer",
+    "description": "Multi-compartment organizer for keeping a study or office desk tidy.",
+    "category": "Office",
+    "price": 899,
+    "stock": 29,
+    "brand": "WorkSpace",
+    "image": "https://picsum.photos/seed/ecommerce-30/800/800"
+  }
+]
