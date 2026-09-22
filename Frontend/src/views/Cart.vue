@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useProductStore } from "@/stores/pinia/productStore";
 import { useAuthStore } from "@/stores/pinia/authStore";
 const router = useRouter();
+const route = useRoute();
 const store = useProductStore();
 const auth = useAuthStore();
 const checkoutOpen = ref(false);
@@ -35,15 +36,22 @@ function useSavedAddress() {
   paymentMethod.value = auth.user.preferredPayment || 'cash_on_delivery';
   address.value = { fullName: auth.user.name || '', address: auth.user.address || '', city: auth.user.city || '', postalCode: auth.user.postalCode || '', country: 'Nepal', phone: auth.user.phone || '' };
 }
-function hasSavedAddress() {
-  return Boolean(auth.user?.name && auth.user?.phone && auth.user?.address && auth.user?.city && auth.user?.postalCode);
-}
 async function prepareCheckout() {
-  if (hasSavedAddress()) await placeOrder();
-  else checkoutOpen.value = true;
+  if (!auth.user) await auth.fetchMe();
+  useSavedAddress();
+  checkoutOpen.value = true;
 }
-onMounted(() => {
-  if (auth.isLoggedIn) { useSavedAddress(); store.loadCart().catch((err) => { error.value = err instanceof Error ? err.message : 'Unable to load cart.' }); }
+onMounted(async () => {
+  if (auth.isLoggedIn) {
+    useSavedAddress();
+    try {
+      await store.loadCart();
+      if (route.query.payment === 'success') await store.removePurchasedItems();
+      if (route.query.payment === 'failed') error.value = 'eSewa payment was not completed. Please try again or choose Cash on Delivery.';
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unable to load cart.';
+    }
+  }
 });
 function changeQuantity(item: any, amount: number) {
   item.quantity = Math.max(1, item.quantity + amount);
@@ -81,10 +89,15 @@ async function placeOrder() {
           items: selectedItems.value.map((item) => ({
             product: item.product._id || item.product.id,
             quantity: item.quantity,
+            selectedSize: item.selectedSize || '',
+            selectedColor: item.selectedColor || ''
           })),
         }),
       });
-      if (!response.ok) throw new Error("Unable to start eSewa payment.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Unable to start eSewa payment.");
+      }
       const payment = await response.json();
       const paymentForm = document.createElement("form");
       paymentForm.method = "POST";
@@ -97,17 +110,16 @@ async function placeOrder() {
         paymentForm.appendChild(input);
       });
       document.body.appendChild(paymentForm);
-      await store.removePurchasedItems();
       paymentForm.submit();
       return;
     }
-    await store.checkout(address.value, {
+    const result = await store.checkout(address.value, {
       method: "cash_on_delivery",
       label: "Cash on Delivery",
     });
     await store.removePurchasedItems();
-    message.value = "Order placed. Pay when your delivery arrives.";
     checkoutOpen.value = false;
+    router.push(`/orders?placed=true&orderId=${result._id}`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Unable to place order.";
   } finally {
@@ -116,7 +128,7 @@ async function placeOrder() {
 }
 </script>
 <template>
-  <main v-if="auth.isLoggedIn" class="cart-page">
+  <main v-if="auth.isLoggedIn && !auth.isAdmin" class="cart-page">
     <div class="cart-heading">
       <div>
         <p class="kicker">YOUR SHOPPING BAG</p>
@@ -149,6 +161,7 @@ async function placeOrder() {
             <span>{{ item.product.category }}</span>
             <h2>{{ item.product.title }}</h2>
             <p>Rs. {{ item.product.price }} each</p>
+            <small v-if="item.selectedSize || item.selectedColor" class="item-options">{{ item.selectedSize ? `Size: ${item.selectedSize}` : '' }}{{ item.selectedSize && item.selectedColor ? ' · ' : '' }}{{ item.selectedColor ? `Color: ${item.selectedColor}` : '' }}</small>
             <div class="quantity">
               <button @click="changeQuantity(item, -1)">−</button
               ><b>{{ item.quantity }}</b
@@ -240,9 +253,9 @@ async function placeOrder() {
   </main>
   <main v-else class="cart-page auth-required">
     <i class="pi pi-lock" />
-    <h1>Sign in to view your bag</h1>
-    <p>Your cart is saved securely to your account.</p>
-    <button class="checkout-btn" @click="router.push('/login')">Sign in</button>
+    <h1>{{ auth.isAdmin ? 'Admin shopping is disabled' : 'Sign in to view your bag' }}</h1>
+    <p>{{ auth.isAdmin ? 'Admin accounts can manage products and orders, but cannot add items to a cart.' : 'Your cart is saved securely to your account.' }}</p>
+    <button v-if="!auth.isAdmin" class="checkout-btn" @click="router.push('/login')">Sign in</button>
   </main>
 </template>
 <style scoped>

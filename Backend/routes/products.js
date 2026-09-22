@@ -19,19 +19,19 @@ router.get('/:id', async (req, res) => {
   if (!product) return res.status(404).json({ message: 'Not found' });
   res.json(product);
 });
-router.post('/upload', upload.single('image'), async (req, res) => {
+router.post('/upload', requireAuth, requireAdmin, upload.array('images', 8), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.files?.length) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'ecommerce-products'
-    });
+    const urls = [];
+    for (const file of req.files) {
+      const result = await cloudinary.uploader.upload(file.path, { folder: 'ecommerce-products' });
+      urls.push(result.secure_url);
+    }
 
-    res.json({
-      url: result.secure_url
-    });
+    res.json({ urls });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Upload failed' });

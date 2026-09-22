@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useProductStore, type product } from "@/stores/pinia/productStore";
 
@@ -8,8 +8,9 @@ const productStore = useProductStore();
 
 const sortBy = ref<string>("featured");
 const addedProductId = ref<string | number | null>(null);
-const newsletterEmail = ref<string>("");
-const newsletterSubscribed = ref<boolean>(false);
+const selectedCardImages = ref<Record<string, string>>({});
+const currentPage = ref(1);
+const pageSize = 8;
 
 onMounted(() => {
   productStore.fetchProducts();
@@ -23,8 +24,25 @@ function selectCategory(cat: string) {
   productStore.selectedCategory = cat;
 }
 
+function productImageList(p: product) {
+  return p.images?.filter(Boolean).length ? p.images.filter(Boolean) : (p.image ? [p.image] : []);
+}
+
+function cardImage(p: product) {
+  return selectedCardImages.value[String(p._id || p.id)] || productImageList(p)[0] || 'https://placehold.co/600x600?text=Product';
+}
+
+function selectCardImage(p: product, image: string, event: MouseEvent) {
+  event.stopPropagation();
+  selectedCardImages.value[String(p._id || p.id)] = image;
+}
+
 function quickAddToCart(p: product, event: MouseEvent) {
   event.stopPropagation();
+  if (p.sizes?.length || p.colors?.length) {
+    router.push({ name: 'product', params: { id: p._id || p.id } });
+    return;
+  }
   void productStore.addToCart(p, 1);
   const id = p._id || p.id || null;
   addedProductId.value = id;
@@ -33,16 +51,6 @@ function quickAddToCart(p: product, event: MouseEvent) {
       addedProductId.value = null;
     }
   }, 1500);
-}
-
-function handleNewsletter() {
-  if (newsletterEmail.value.trim()) {
-    newsletterSubscribed.value = true;
-    newsletterEmail.value = "";
-    setTimeout(() => {
-      newsletterSubscribed.value = false;
-    }, 4000);
-  }
 }
 
 const sortedProducts = computed(() => {
@@ -56,106 +64,32 @@ const sortedProducts = computed(() => {
   }
   return list;
 });
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / pageSize)));
+const pagedProducts = computed(() => sortedProducts.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize));
+watch([() => productStore.searchItem, () => productStore.selectedCategory, () => productStore.selectedGender, () => productStore.minPrice, () => productStore.maxPrice, sortBy], () => {
+  currentPage.value = 1;
+});
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) currentPage.value = pages;
+});
 </script>
 
 <template>
   <main class="home-page">
-    <!-- Hero Section -->
-    <section class="hero-section">
+    <section v-if="!productStore.searchItem.trim()" class="hero-section">
       <div class="hero-container">
         <div class="hero-copy">
-          <div class="hero-badge">
-            <span class="pulse-dot"></span>
-            <span>2026 Collection • Fast Delivery Across Nepal</span>
-          </div>
-          <h1>
-            Thoughtful Living.<br />
-            <em>Delivered Daily.</em>
-          </h1>
+          <span class="hero-eyebrow">Curated Marketplace</span>
+          <h1>Discover quality products.</h1>
           <p class="hero-subtext">
-            Explore premium fashion, modern electronics, and everyday essentials curated for quality, longevity, and genuine value.
+            Browse hand-picked items from trusted sellers.
           </p>
-          <div class="hero-cta-group">
-            <button class="btn-primary" @click="browseCatalog">
-              <span>Explore Collection</span>
-              <i class="pi pi-arrow-down" />
-            </button>
-            <button class="btn-secondary" @click="selectCategory('All'); browseCatalog()">
-              <span>View All Items</span>
-              <i class="pi pi-arrow-right" />
-            </button>
-          </div>
-          <div class="hero-trust-metrics">
-            <div class="metric">
-              <strong>5,000+</strong>
-              <span>Verified Orders</span>
-            </div>
-            <div class="metric-divider"></div>
-            <div class="metric">
-              <strong>100%</strong>
-              <span>Authentic Items</span>
-            </div>
-            <div class="metric-divider"></div>
-            <div class="metric">
-              <strong>4.9 ★</strong>
-              <span>Customer Rating</span>
-            </div>
-          </div>
+          <button class="btn-primary" @click="browseCatalog">
+            <span>Explore Collection</span>
+            <i class="pi pi-arrow-down" />
+          </button>
         </div>
 
-        <div class="hero-showcase">
-          <div class="showcase-card">
-            <div class="showcase-tag">Featured Pick</div>
-            <div class="showcase-img-wrap">
-              <img
-                src="https://picsum.photos/seed/ecommerce-1/600/600"
-                alt="Featured product"
-              />
-            </div>
-            <div class="showcase-details">
-              <div class="showcase-rating">★★★★★ <span>(4.9)</span></div>
-              <h4>Everyday Comfort Collection</h4>
-              <div class="showcase-price-row">
-                <span class="price-val">From Rs. 1,299</span>
-                <span class="cod-badge"><i class="pi pi-check-circle" /> COD Ready</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Value Highlights / Guarantees Strip -->
-    <section class="features-strip">
-      <div class="features-container">
-        <div class="feature-card">
-          <div class="feature-icon"><i class="pi pi-truck" /></div>
-          <div class="feature-text">
-            <strong>Fast Doorstep Delivery</strong>
-            <p>Reliable transit to your door across all major cities in Nepal</p>
-          </div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><i class="pi pi-wallet" /></div>
-          <div class="feature-text">
-            <strong>Cash on Delivery</strong>
-            <p>Inspect your items upon arrival before paying safely</p>
-          </div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><i class="pi pi-shield" /></div>
-          <div class="feature-text">
-            <strong>100% Authentic Quality</strong>
-            <p>Every piece is strictly vetted for genuine materials</p>
-          </div>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon"><i class="pi pi-headphones" /></div>
-          <div class="feature-text">
-            <strong>Dedicated Support</strong>
-            <p>Friendly customer care available 7 days a week</p>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -169,6 +103,13 @@ const sortedProducts = computed(() => {
         <div class="header-right">
           <span class="count-pill">{{ sortedProducts.length }} items available</span>
         </div>
+      </div>
+
+      <div class="gender-filter-bar" aria-label="Filter products by audience">
+        <span class="filter-label">Shop for</span>
+        <button v-for="gender in [{ key: 'all', label: 'Everyone' }, { key: 'men', label: 'Men' }, { key: 'women', label: 'Women' }, { key: 'unisex', label: 'Unisex' }]" :key="gender.key" :class="['gender-pill-btn', { active: productStore.selectedGender === gender.key }]" @click="productStore.selectedGender = gender.key">
+          {{ gender.label }}
+        </button>
       </div>
 
       <!-- Category Filter Pills -->
@@ -185,25 +126,6 @@ const sortedProducts = computed(() => {
 
       <!-- Search & Sort Controls -->
       <div class="controls-bar">
-        <div class="search-box">
-          <i class="pi pi-search search-icon" />
-          <input
-            v-model="productStore.searchItem"
-            type="search"
-            placeholder="Search products by title..."
-            aria-label="Search products"
-          />
-          <button
-            v-if="productStore.searchItem"
-            type="button"
-            class="clear-btn"
-            aria-label="Clear search query"
-            @click="productStore.searchItem = ''"
-          >
-            <i class="pi pi-times" />
-          </button>
-        </div>
-
         <div class="sort-box">
           <label for="sort-select">Sort by:</label>
           <select id="sort-select" v-model="sortBy">
@@ -223,7 +145,7 @@ const sortedProducts = computed(() => {
       <!-- Products Grid -->
       <div v-if="sortedProducts.length" class="products-grid">
         <article
-          v-for="p in sortedProducts"
+          v-for="p in pagedProducts"
           :key="p._id || p.id"
           class="product-card"
           @click="router.push({ name: 'product', params: { id: p._id || p.id } })"
@@ -231,18 +153,24 @@ const sortedProducts = computed(() => {
           <div class="card-media">
             <span class="card-badge">{{ p.category }}</span>
             <img
-              :src="p.image || 'https://placehold.co/600x600?text=Product'"
+              :src="cardImage(p)"
               :alt="p.title"
               loading="lazy"
             />
+            <div v-if="productImageList(p).length > 1" class="card-thumbnails" aria-label="Product images">
+              <button
+                v-for="image in productImageList(p)"
+                :key="image"
+                type="button"
+                :class="['card-thumbnail', { active: cardImage(p) === image }]"
+                @click="selectCardImage(p, image, $event)"
+              >
+                <img :src="image" :alt="`${p.title} thumbnail`" />
+              </button>
+            </div>
           </div>
 
           <div class="card-content">
-            <div class="card-rating">
-              <span class="stars">★★★★★</span>
-              <span class="rating-num">4.8</span>
-            </div>
-
             <h3 class="card-title">{{ p.title }}</h3>
 
             <div class="card-footer">
@@ -267,6 +195,12 @@ const sortedProducts = computed(() => {
         </article>
       </div>
 
+      <nav v-if="totalPages > 1" class="pagination" aria-label="Product pages">
+        <button type="button" :disabled="currentPage === 1" @click="currentPage--"><i class="pi pi-arrow-left" /> Previous</button>
+        <button v-for="page in totalPages" :key="page" type="button" :class="{ active: currentPage === page }" @click="currentPage = page">{{ page }}</button>
+        <button type="button" :disabled="currentPage === totalPages" @click="currentPage++">Next <i class="pi pi-arrow-right" /></button>
+      </nav>
+
       <!-- Empty State -->
       <div v-else class="empty-state">
         <i class="pi pi-inbox empty-icon" />
@@ -282,96 +216,6 @@ const sortedProducts = computed(() => {
       </div>
     </section>
 
-    <!-- Promotional Spotlight Banner -->
-    <section class="promo-banner-section">
-      <div class="promo-banner">
-        <div class="promo-content">
-          <span class="promo-tag">LIMITED TIME OFFER</span>
-          <h2>Special Discount on First Order</h2>
-          <p>Get flat 10% off your entire cart with code <strong>NEPKART10</strong> at checkout.</p>
-          <button class="btn-promo" @click="browseCatalog">
-            <span>Shop Now & Save</span>
-            <i class="pi pi-arrow-right" />
-          </button>
-        </div>
-        <div class="promo-badge-circle">
-          <span class="discount-num">10%</span>
-          <span class="discount-text">OFF</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Customer Reviews / Testimonials -->
-    <section class="testimonials-section">
-      <div class="testimonials-header">
-        <span class="section-kicker">COMMUNITY FEEDBACK</span>
-        <h2>Trusted by Shoppers Across Nepal</h2>
-      </div>
-
-      <div class="testimonials-grid">
-        <div class="testimonial-card">
-          <div class="stars">★★★★★</div>
-          <p>“Received my package in Kathmandu within two days. The fabric quality and fit exceeded expectations, and Cash on Delivery was super smooth!”</p>
-          <div class="author-info">
-            <span class="author-avatar">A</span>
-            <div>
-              <strong>Aarav Sharma</strong>
-              <small>Verified Buyer • Kathmandu</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="testimonial-card">
-          <div class="stars">★★★★★</div>
-          <p>“NepKart has become my go-to store. Accurate product descriptions, genuine quality, and really friendly customer support when I had a question.”</p>
-          <div class="author-info">
-            <span class="author-avatar">P</span>
-            <div>
-              <strong>Pooja Thapa</strong>
-              <small>Verified Buyer • Pokhara</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="testimonial-card">
-          <div class="stars">★★★★★</div>
-          <p>“Fast checkout and straightforward experience. Ordered an electronic gadget and it arrived in pristine packaging. Highly recommended!”</p>
-          <div class="author-info">
-            <span class="author-avatar">B</span>
-            <div>
-              <strong>Bikash Shrestha</strong>
-              <small>Verified Buyer • Lalitpur</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Newsletter Section -->
-    <section class="newsletter-section">
-      <div class="newsletter-card">
-        <div class="newsletter-content">
-          <h2>Join the NepKart Family</h2>
-          <p>Subscribe for exclusive access to seasonal drops, flash sales, and early-bird discount codes.</p>
-          <form class="newsletter-form" @submit.prevent="handleNewsletter">
-            <input
-              v-model="newsletterEmail"
-              type="email"
-              placeholder="Enter your email address..."
-              required
-              aria-label="Email address for newsletter"
-            />
-            <button type="submit" class="btn-subscribe">
-              <span>Subscribe</span>
-              <i class="pi pi-send" />
-            </button>
-          </form>
-          <p v-if="newsletterSubscribed" class="subscribe-success">
-            <i class="pi pi-check-circle" /> Thank you! You've been subscribed successfully.
-          </p>
-        </div>
-      </div>
-    </section>
   </main>
 </template>
 
@@ -382,6 +226,10 @@ const sortedProducts = computed(() => {
   font-family: inherit;
   overflow-x: hidden;
 }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 28px 0 8px; }
+.pagination button { border: 1px solid #dfe7dc; background: #fff; color: #294132; min-width: 38px; height: 38px; cursor: pointer; border-radius: 5px; }
+.pagination button.active { background: #2e6041; color: #fff; border-color: #2e6041; }
+.pagination button:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Hero Section */
 .hero-section {
@@ -721,6 +569,18 @@ const sortedProducts = computed(() => {
 }
 
 /* Category Filter Bar */
+.gender-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 12px;
+  flex-wrap: wrap;
+}
+
+.filter-label { color: #60705f; font-size: .82rem; font-weight: 700; margin-right: 4px; }
+.gender-pill-btn { border: 1px solid #d8e2d8; border-radius: 9999px; background: #fff; color: #4a5568; padding: 7px 14px; cursor: pointer; font-size: .82rem; font-weight: 700; }
+.gender-pill-btn:hover, .gender-pill-btn.active { border-color: #2e6041; color: #fff; background: #2e6041; }
+
 .category-filter-bar {
   display: flex;
   align-items: center;
@@ -912,6 +772,33 @@ const sortedProducts = computed(() => {
   object-fit: contain;
   transition: transform 0.3s ease;
 }
+
+.card-thumbnails {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.card-thumbnail {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid #d7e2d8;
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.card-thumbnail.active { border: 2px solid #2e6041; }
+.card-thumbnail img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
 
 .product-card:hover .card-media img {
   transform: scale(1.06);
@@ -1381,4 +1268,110 @@ const sortedProducts = computed(() => {
     width: 100%;
   }
 }
+
+/* Premium minimal hero */
+.home-page { font-family: Inter, Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fafafa; color: #111318; }
+.hero-section { position: relative; overflow: hidden; padding: clamp(72px, 10vw, 132px) 24px clamp(86px, 11vw, 150px); color: #111318; background: #fafafa; }
+.hero-section::before { position: absolute; width: 460px; height: 460px; top: -180px; right: 8%; content: ''; border-radius: 50%; background: rgba(226, 230, 235, .5); filter: blur(2px); }
+.hero-container { position: relative; z-index: 1; max-width: 1180px; display: grid; grid-template-columns: minmax(0, .95fr) minmax(360px, .85fr); align-items: center; gap: clamp(44px, 8vw, 120px); }
+.hero-copy { max-width: 570px; }
+.hero-eyebrow { display: block; margin-bottom: 22px; color: #70757d; font-size: .72rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; animation: hero-fade-up .7s ease both; }
+.hero-section h1 { max-width: 600px; margin: 0 0 24px; color: #111318; font: 700 clamp(3rem, 6vw, 5.7rem)/.98 Inter, Manrope, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.055em; animation: hero-fade-up .7s .08s ease both; }
+.hero-subtext { max-width: 430px; margin: 0 0 34px; color: #686e77; font-size: clamp(1rem, 1.5vw, 1.15rem); line-height: 1.65; animation: hero-fade-up .7s .16s ease both; }
+.hero-copy .btn-primary { animation: hero-fade-up .7s .24s ease both; }
+.btn-primary { display: inline-flex; align-items: center; gap: 12px; padding: 15px 21px; border: 0; border-radius: 12px; color: #fff; background: #111318; box-shadow: 0 10px 22px rgba(17, 19, 24, .14); cursor: pointer; font: 700 .9rem Inter, Manrope, ui-sans-serif, sans-serif; transition: transform .25s ease, box-shadow .25s ease, background .25s ease; }
+.btn-primary:hover { background: #34383f; box-shadow: 0 14px 28px rgba(17, 19, 24, .2); transform: translateY(-2px); }
+.hero-showcase { flex: initial; width: 100%; }
+.showcase-card { width: min(100%, 470px); max-width: none; margin-left: auto; padding: 14px; border: 1px solid #e7e8ea; border-radius: 24px; background: #fff; box-shadow: 0 24px 55px rgba(26, 30, 36, .12); transform: rotate(2deg); animation: hero-float 5s ease-in-out infinite; }
+.showcase-card:hover { transform: rotate(0deg) translateY(-5px); }
+.showcase-img-wrap { height: clamp(330px, 38vw, 500px); border-radius: 16px; background: #f0f1f2; }
+.showcase-img-wrap img { object-fit: contain; mix-blend-mode: multiply; transition: transform .5s ease; }
+.showcase-card:hover .showcase-img-wrap img { transform: scale(1.035); }
+.showcase-tag, .showcase-details, .hero-badge, .hero-cta-group, .hero-trust-metrics { display: none; }
+@keyframes hero-fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hero-float { 0%, 100% { transform: rotate(2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-8px); } }
+@media (max-width: 900px) {
+  .hero-container { grid-template-columns: 1fr; gap: 48px; }
+  .hero-copy { max-width: 650px; }
+  .showcase-card { margin: 0 auto; }
+}
+@media (max-width: 640px) {
+  .hero-section { padding: 62px 20px 82px; }
+  .hero-section h1 { font-size: clamp(2.75rem, 13vw, 4rem); }
+  .hero-subtext { margin-bottom: 28px; }
+  .showcase-img-wrap { height: 330px; }
+}
+
+/* Compact category-preview hero */
+.hero-section { min-height: 500px; height: min(650px, calc(100dvh - 118px)); box-sizing: border-box; padding-block: 56px; background: #fafafa; }
+.hero-container { height: 100%; grid-template-columns: minmax(0, .9fr) minmax(360px, .8fr); gap: clamp(40px, 8vw, 110px); }
+.hero-section h1 { max-width: 540px; font-size: clamp(3rem, 5vw, 3.75rem); letter-spacing: -.045em; }
+.hero-eyebrow { color: #3b82f6; }
+.hero-subtext { max-width: 390px; font-size: 1.05rem; }
+.showcase-card { width: min(100%, 430px); padding: 22px; border-radius: 22px; transform: rotate(1.5deg); }
+.showcase-card:hover { transform: rotate(0deg) translateY(-5px); }
+.category-preview-header { display: flex; align-items: center; gap: 6px; margin-bottom: 24px; color: #8a919b; }
+.category-preview-header > span { width: 7px; height: 7px; border-radius: 50%; background: #d5d9df; }
+.category-preview-header small { margin-left: auto; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; }
+.category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.category-preview { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 128px; padding: 16px; box-sizing: border-box; overflow: hidden; border-radius: 14px; color: #20252c; background: #f0f2f4; transition: transform .25s ease, box-shadow .25s ease; }
+.category-preview::after { position: absolute; width: 80px; height: 80px; right: -25px; bottom: -25px; content: ''; border-radius: 50%; background: rgba(255,255,255,.7); }
+.category-preview:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(35, 40, 48, .09); }
+.category-preview i { position: relative; z-index: 1; width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; color: #fff; background: #3b82f6; font-size: .85rem; }
+.category-preview span { position: relative; z-index: 1; font-size: .9rem; font-weight: 750; }
+.category-preview b { position: absolute; z-index: 1; top: 13px; right: 14px; color: #9aa1aa; font-size: .65rem; font-weight: 700; }
+.category-fashion { background: #f3f1ed; }.category-home { background: #eef3f1; }.category-essentials { background: #f1f1f5; }
+.preview-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; padding-top: 16px; border-top: 1px solid #eceef0; color: #858c95; font-size: .72rem; }.preview-footer i { color: #3b82f6; font-size: .85rem; }
+@media (max-width: 900px) { .hero-section { height: auto; min-height: 0; padding-block: 64px 72px; }.hero-container { height: auto; }.hero-showcase { margin-top: 8px; } }
+@media (max-width: 640px) { .hero-section { padding-block: 54px 66px; }.hero-section h1 { font-size: clamp(2.65rem, 12vw, 3.5rem); }.showcase-card { width: 100%; transform: none; }.category-preview { min-height: 112px; } }
+
+/* Centered monochrome hero without category artwork */
+.hero-section { min-height: 500px; height: min(620px, calc(100dvh - 118px)); background: #fafafa; }
+.hero-container { grid-template-columns: 1fr; justify-items: center; }
+.hero-copy { max-width: 720px; text-align: center; }
+.hero-eyebrow { color: #70757d; }
+.hero-section h1, .hero-subtext { margin-inline: auto; }
+.hero-section h1 { max-width: 700px; }
+.hero-subtext { max-width: 470px; }
+.hero-copy .btn-primary { margin-inline: auto; }
+.hero-showcase { display: none; }
+@media (max-width: 900px) { .hero-section { height: auto; min-height: 500px; }.hero-container { grid-template-columns: 1fr; } }
+
+/* Soft green compact hero carousel */
+.hero-section { min-height: 0; height: clamp(500px, 62vh, 620px); padding: 48px 24px; background: #f7faf7; }
+.hero-section::before { width: 420px; height: 420px; top: -190px; right: 12%; background: rgba(196, 220, 201, .42); }
+.hero-container { height: 100%; grid-template-columns: minmax(0, .95fr) minmax(330px, .8fr); justify-items: stretch; gap: clamp(40px, 8vw, 110px); }
+.hero-copy { max-width: 570px; text-align: left; align-self: center; }
+.hero-eyebrow { color: #5c8064; }
+.hero-section h1, .hero-subtext { margin-inline: 0; }
+.hero-section h1 { max-width: 560px; font-size: clamp(3rem, 5vw, 3.75rem); }
+.hero-subtext { max-width: 410px; }
+.hero-copy .btn-primary { margin-inline: 0; background: #203b29; box-shadow: 0 10px 22px rgba(32, 59, 41, .16); }
+.hero-copy .btn-primary:hover { background: #315a3d; box-shadow: 0 14px 28px rgba(32, 59, 41, .22); }
+.hero-carousel { align-self: center; width: 100%; max-width: 440px; margin-left: auto; }
+.carousel-window { position: relative; height: 330px; overflow: hidden; border: 1px solid #dce8de; border-radius: 24px; background: #eaf3eb; box-shadow: 0 22px 50px rgba(38, 73, 46, .12); }
+.carousel-slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 34px; overflow: hidden; animation: carousel-in .55s ease both; }
+.carousel-slide::before { position: absolute; width: 250px; height: 250px; top: -95px; right: -45px; content: ''; border: 1px solid rgba(65, 111, 75, .18); border-radius: 50%; box-shadow: 0 0 0 24px rgba(65, 111, 75, .05), 0 0 0 48px rgba(65, 111, 75, .04); }
+.carousel-slide:nth-child(2) { background: #f0f4ec; }.carousel-slide:nth-child(3) { background: #eef5f0; }
+.slide-orbit { position: absolute; border: 1px solid rgba(65, 111, 75, .17); border-radius: 50%; }.orbit-one { width: 155px; height: 155px; right: 20px; bottom: -74px; }.orbit-two { width: 90px; height: 90px; right: 53px; bottom: -42px; }
+.slide-icon { position: relative; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 15px; color: #fff; background: #416f4b; box-shadow: 0 10px 20px rgba(65, 111, 75, .2); font-size: 1.25rem; }
+.slide-eyebrow { position: relative; z-index: 1; margin-top: auto; color: #6f8a75; font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }.carousel-slide h2 { position: relative; z-index: 1; max-width: 300px; margin: 10px 0 28px; color: #203b29; font: 600 clamp(1.8rem, 3vw, 2.45rem)/1.05 Inter, Manrope, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.04em; }.slide-footer { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid rgba(65, 111, 75, .16); color: #607663; font-size: .8rem; }.slide-footer i { color: #416f4b; }
+.carousel-controls { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }.carousel-controls button { width: 24px; height: 4px; padding: 0; border: 0; border-radius: 99px; background: #cbdacc; cursor: pointer; transition: width .25s, background .25s; }.carousel-controls button.active { width: 42px; background: #416f4b; }
+@keyframes carousel-in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
+@media (max-width: 900px) { .hero-section { height: auto; padding-block: 60px 72px; }.hero-container { height: auto; grid-template-columns: 1fr; }.hero-carousel { margin: 8px auto 0; } }
+@media (max-width: 640px) { .hero-section { padding: 52px 20px 66px; }.hero-section h1 { font-size: clamp(2.7rem, 12vw, 3.5rem); }.carousel-window { height: 280px; }.carousel-slide { padding: 26px; } }
+
+/* Restored simple hero */
+.hero-section { height: auto; min-height: 500px; padding: 82px 24px 96px; background: #f6f1e9; }
+.hero-section::before { width: 420px; height: 420px; top: -210px; right: 12%; background: rgba(255, 255, 255, .55); }
+.hero-container { height: auto; grid-template-columns: 1fr; justify-items: center; }
+.hero-copy { max-width: 720px; text-align: center; }
+.hero-eyebrow { color: #756b5f; }
+.hero-section h1, .hero-subtext { margin-inline: auto; }
+.hero-section h1 { max-width: 700px; color: #24211e; }
+.hero-subtext { max-width: 470px; color: #706a63; }
+.hero-copy .btn-primary { margin-inline: auto; background: #24211e; box-shadow: 0 10px 22px rgba(36, 33, 30, .16); }
+.hero-copy .btn-primary:hover { background: #48423b; box-shadow: 0 14px 28px rgba(36, 33, 30, .22); }
+.hero-showcase, .hero-carousel { display: none; }
+@media (max-width: 640px) { .hero-section { min-height: 500px; padding: 64px 20px 76px; } }
 </style>

@@ -4,6 +4,9 @@ const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
+const crypto = require('crypto');
+const { sendVerificationEmail } = require('../utils/mailer');
+const { normalizePhone, createAndSendOtp, verifyOtp } = require('../utils/sms');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -11,28 +14,124 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phone, address, city, location } = req.body;
-    const existing = await User.findOne({ email });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) return res.status(400).json({ message: 'Email already registered' });
-    const user = new User({ name, email, password, phone, address, city, location });
+    const normalizedPhone = normalizePhone(phone);
+    if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) return res.status(400).json({ message: 'Enter a valid phone number with country code.' });
+    const verificationCode = String(crypto.randomInt(100000, 1000000));
+    const user = new User({
+      name,
+      email: normalizedEmail,
+      password,
+      phone: normalizedPhone,
+      address,
+      city,
+      location,
+      emailVerified: false,
+      emailVerificationCodeHash: crypto.createHash('sha256').update(verificationCode).digest('hex'),
+      emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      emailVerificationAttempts: 0
+    });
     await user.save();
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, address: user.address, city: user.city, location: user.location, preferredPayment: user.preferredPayment, role: user.role } });
+
+    try {
+      await sendVerificationEmail(user, verificationCode);
+    } catch (mailError) {
+      await user.deleteOne();
+      throw mailError;
+    }
+
+    res.status(201).json({ message: 'Account created. Check your email for the verification code.' });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(503).json({ message: err.message || 'Unable to create account.' });
+  }
+});
+
+router.post('/resend-email-verification', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const user = await User.findOne({ email, emailVerified: false });
+    if (!user) return res.status(404).json({ message: 'No unverified account found for this email.' });
+
+    const verificationCode = String(crypto.randomInt(100000, 1000000));
+    user.emailVerificationCodeHash = crypto.createHash('sha256').update(verificationCode).digest('hex');
+    user.emailVerificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.emailVerificationAttempts = 0;
+    await user.save();
+    await sendVerificationEmail(user, verificationCode);
+
+    res.json({ message: 'A new verification code was sent to your email.' });
+  } catch (err) {
+    res.status(503).json({ message: err.message || 'Unable to send verification email.' });
   }
 });
 
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!user.emailVerified) return res.status(403).json({ message: 'Please verify your email before signing in.' });
     const match = await user.comparePassword(password);
     if (!match) return res.status(400).json({ message: 'Invalid credentials' });
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
     res.json({ token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, address: user.address, city: user.city, postalCode: user.postalCode, avatar: user.avatar, preferredPayment: user.preferredPayment, role: user.role } });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/verify-email-otp', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const code = String(req.body.code || '').trim();
+    const user = await User.findOne({ email, emailVerified: false });
+    if (!user || !user.emailVerificationCodeHash || !user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date() || user.emailVerificationAttempts >= 5) {
+      return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    }
+    user.emailVerificationAttempts += 1;
+    const valid = user.emailVerificationCodeHash === crypto.createHash('sha256').update(code).digest('hex');
+    if (!valid) {
+      await user.save();
+      return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    }
+    user.emailVerified = true;
+    user.emailVerificationCodeHash = '';
+    user.emailVerificationExpiresAt = null;
+    user.emailVerificationAttempts = 0;
+    await user.save();
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
+    res.json({ message: 'Email verified.', token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, address: user.address, city: user.city, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to verify email address.' });
+  }
+});
+
+router.post('/phone/request-otp', async (req, res) => {
+  try {
+    const phone = normalizePhone(req.body.phone);
+    if (!/^\+?[1-9]\d{7,14}$/.test(phone)) return res.status(400).json({ message: 'Enter a valid phone number with country code.' });
+    const user = await User.findOne({ phone });
+    if (!user) return res.status(404).json({ message: 'No account is registered with this phone number.' });
+    await createAndSendOtp(phone);
+    res.json({ message: 'Verification code sent.' });
+  } catch (error) {
+    console.error('Phone OTP request failed:', error.message);
+    res.status(503).json({ message: error.message || 'Unable to send verification code.' });
+  }
+});
+
+router.post('/phone/verify-otp', async (req, res) => {
+  try {
+    const phone = normalizePhone(req.body.phone);
+    const user = await User.findOne({ phone });
+    if (!user || !(await verifyOtp(phone, req.body.code))) return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, phone: user.phone, address: user.address, city: user.city, postalCode: user.postalCode, avatar: user.avatar, preferredPayment: user.preferredPayment, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to verify phone number.' });
   }
 });
 

@@ -4,8 +4,14 @@ const orderSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: [{
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    title: { type: String, default: '' },
+    image: { type: String, default: '' },
+    category: { type: String, default: '' },
+    description: { type: String, default: '' },
     quantity: { type: Number, default: 1 },
-    price: { type: Number }
+    price: { type: Number },
+    selectedSize: { type: String, default: '' },
+    selectedColor: { type: String, default: '' }
   }],
   shippingAddress: {
     fullName: String,

@@ -14,14 +14,33 @@ const loadingOrders = ref(false)
 const error = ref('')
 const editingId = ref('')
 const activeTab = ref<'overview' | 'products' | 'orders'>('overview')
+const selectedOrderStatus = ref('all')
+const orderStatuses = ['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled']
 
 const form = ref({
   title: '',
   description: '',
   price: 0,
   category: '',
+  gender: 'unisex',
   image: '',
-  stock: 0
+  images: [] as string[],
+  stock: 0,
+  sizes: '',
+  colors: ''
+})
+
+const categoryOptions = computed(() => {
+  const unisexCategories = ['Clothing', 'Footwear', 'Accessories', 'Bags', 'Watches', 'Electronics', 'Home & Kitchen']
+  const optionsByGender: Record<string, string[]> = {
+    men: ["Men's Clothing", "Men's Footwear", "Men's Accessories", 'Watches', 'Grooming'],
+    women: ["Women's Clothing", "Women's Footwear", "Women's Accessories", 'Bags', 'Jewelry', 'Beauty'],
+    unisex: unisexCategories
+  }
+  const options: string[] = optionsByGender[form.value.gender] ?? unisexCategories
+  return form.value.category && !options.includes(form.value.category)
+    ? [form.value.category, ...options]
+    : options
 })
 
 onMounted(async () => {
@@ -43,6 +62,12 @@ const totalInventory = computed(() => products.value.reduce((sum, item) => sum +
 const lowStockProducts = computed(() => products.value.filter(item => Number(item.stock || 0) < 10))
 const totalRevenue = computed(() => orders.value.reduce((sum, order) => sum + Number(order.total || 0), 0))
 const recentProducts = computed(() => [...products.value].slice(0, 5))
+const visibleOrders = computed(() => selectedOrderStatus.value === 'all'
+  ? orders.value
+  : orders.value.filter(order => order.status === selectedOrderStatus.value))
+const orderCount = (status: string) => status === 'all'
+  ? orders.value.length
+  : orders.value.filter(order => order.status === status).length
 
 function setActiveTab(tab: 'overview' | 'products' | 'orders') {
   activeTab.value = tab
@@ -74,19 +99,21 @@ async function loadOrders() {
 
 async function onImageSelected(event: Event) {
   const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+  const files = Array.from(target.files || [])
+  if (!files.length) return
 
   const formData = new FormData()
-  formData.append('image', file)
+  files.forEach(file => formData.append('images', file))
 
   const res = await fetch(`${base}/products/upload`, {
     method: 'POST',
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     body: formData
   })
 
   const data = await res.json()
-  form.value.image = data.url
+  form.value.images = [...form.value.images, ...(data.urls || [])]
+  form.value.image = form.value.images[0] || ''
 }
 
 async function loadProducts() {
@@ -121,8 +148,12 @@ function resetForm() {
     description: '',
     price: 0,
     category: '',
+    gender: 'unisex',
     image: '',
-    stock: 0
+    images: [],
+    stock: 0,
+    sizes: '',
+    colors: ''
   }
 }
 
@@ -133,8 +164,12 @@ function editProduct(product: any) {
     description: product.description,
     price: product.price,
     category: product.category,
+    gender: product.gender || 'unisex',
     image: product.image || '',
-    stock: product.stock || 0
+    images: product.images?.length ? [...product.images] : (product.image ? [product.image] : []),
+    stock: product.stock || 0,
+    sizes: product.sizes?.join(', ') || '',
+    colors: product.colors?.join(', ') || ''
   }
 }
 
@@ -144,7 +179,9 @@ async function submitProduct() {
   const payload = {
     ...form.value,
     price: Number(form.value.price),
-    stock: Number(form.value.stock)
+    stock: Number(form.value.stock),
+    sizes: form.value.sizes.split(',').map(value => value.trim()).filter(Boolean),
+    colors: form.value.colors.split(',').map(value => value.trim()).filter(Boolean)
   }
 
   try {
@@ -294,8 +331,27 @@ async function updateOrderStatus(order: any, status: string) {
           <input v-model="form.price" type="number" step="0.01" placeholder="Price" required />
           <input v-model="form.stock" type="number" placeholder="Stock" required />
         </div>
-        <input v-model="form.category" type="text" placeholder="Category" required />
-        <input type="file" @change="onImageSelected" />
+        <label class="select-label">Audience
+          <select v-model="form.gender">
+            <option value="unisex">Unisex</option>
+            <option value="men">Men</option>
+            <option value="women">Women</option>
+          </select>
+        </label>
+        <label class="select-label">Category
+          <select v-model="form.category" required>
+            <option value="" disabled>Select a category</option>
+            <option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option>
+          </select>
+        </label>
+        <input v-model="form.sizes" type="text" placeholder="Sizes (comma separated, e.g. S, M, L)" />
+        <input v-model="form.colors" type="text" placeholder="Colors (comma separated, e.g. Black, White)" />
+        <label class="upload-label">Product photos (select up to 8)
+          <input type="file" accept="image/*" multiple @change="onImageSelected" />
+        </label>
+        <div v-if="form.images.length" class="image-preview-row">
+          <img v-for="image in form.images" :key="image" :src="image" alt="Product preview" />
+        </div>
 
         <div class="button-row">
           <button type="submit" class="primary-button">{{ editingId ? 'Update Product' : 'Add Product' }}</button>
@@ -327,27 +383,54 @@ async function updateOrderStatus(order: any, status: string) {
     </section>
 
     <section v-if="activeTab === 'orders'" class="panel-card orders-card">
-      <h2>Latest Orders</h2>
+      <div class="header-inline">
+        <div>
+          <h2>Orders</h2>
+          <p class="muted-text">Review and update every order by its current state.</p>
+        </div>
+        <span>{{ orders.length }} total</span>
+      </div>
 
       <div v-if="loadingOrders" class="muted-text">Loading orders...</div>
       <div v-else-if="orders.length === 0" class="muted-text">No orders yet.</div>
 
-      <div v-else class="orders-list">
-        <div v-for="order in orders.slice(0, 8)" :key="order._id" class="order-row">
-          <div>
-            <strong>Order #{{ order._id.slice(-6) }}</strong>
-            <small>{{ order.items.length }} items • {{ order.status }}</small>
-          </div>
-
-          <div class="order-meta">
-            <strong>Rs. {{ order.total }}</strong>
-            <small>{{ new Date(order.createdAt).toLocaleDateString() }}</small>
-          </div>
-          <select :value="order.status" @change="updateOrderStatus(order, ($event.target as HTMLSelectElement).value)">
-            <option v-for="status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled']" :key="status" :value="status">{{ status }}</option>
-          </select>
+      <template v-else>
+        <div class="order-status-filters" aria-label="Filter orders by status">
+          <button v-for="status in orderStatuses" :key="status" type="button" :class="['status-filter-button', { active: selectedOrderStatus === status }]" @click="selectedOrderStatus = status">
+            {{ status }} <span>{{ orderCount(status) }}</span>
+          </button>
         </div>
-      </div>
+
+        <div v-if="visibleOrders.length" class="orders-list">
+          <div v-for="order in visibleOrders" :key="order._id" class="order-card-admin">
+            <div class="order-row">
+              <div>
+                <strong>Order #{{ order._id.slice(-6).toUpperCase() }}</strong>
+                <small>{{ order.user?.name || order.shippingAddress?.fullName || 'Customer' }} · {{ order.items.length }} item{{ order.items.length === 1 ? '' : 's' }}</small>
+              </div>
+
+              <div class="order-meta">
+                <strong>Rs. {{ order.total }}</strong>
+                <small>{{ new Date(order.createdAt).toLocaleDateString() }} · <span :class="['order-status', `order-status-${order.status}`]">{{ order.status }}</span></small>
+              </div>
+              <select :value="order.status" :aria-label="`Update order ${order._id.slice(-6)} status`" @change="updateOrderStatus(order, ($event.target as HTMLSelectElement).value)">
+                <option v-for="status in orderStatuses.slice(1)" :key="status" :value="status">{{ status }}</option>
+              </select>
+            </div>
+
+            <div class="admin-order-items">
+              <div v-for="item in order.items" :key="item._id || item.product?._id || item.product" class="admin-order-item">
+                <img :src="item.image || item.product?.image || item.product?.images?.[0] || 'https://placehold.co/44x44?text=Product'" :alt="item.title || item.product?.title || 'Product'">
+                <div class="admin-item-text">
+                  <span>{{ item.title || item.product?.title || 'Product' }}</span>
+                  <small>Qty: {{ item.quantity }} · Rs. {{ Number(item.price || item.product?.price || 0).toLocaleString() }} <template v-if="item.selectedSize">· Size: {{ item.selectedSize }}</template><template v-if="item.selectedColor"> · Color: {{ item.selectedColor }}</template></small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="muted-text empty-orders">No orders in this state.</div>
+      </template>
     </section>
       </div>
     </div>
@@ -573,7 +656,8 @@ h1 {
 }
 
 .form-card input,
-.form-card textarea {
+.form-card textarea,
+.form-card select {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
@@ -581,6 +665,8 @@ h1 {
   font: inherit;
   box-sizing: border-box;
 }
+
+.select-label { display: grid; gap: 6px; color: #475569; font-size: .82rem; font-weight: 700; }
 
 .split-fields {
   display: grid;
@@ -604,6 +690,54 @@ h1 {
 .orders-card {
   margin-top: 18px;
 }
+
+.order-card-admin {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 14px 0;
+}
+.order-card-admin:last-child {
+  border-bottom: none;
+}
+.admin-order-items {
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.admin-order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-order-item img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+.admin-item-text span {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+.admin-item-text small {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.header-inline > div p { margin: 5px 0 0; }
+.order-status-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.status-filter-button { border: 1px solid #dbe3ed; border-radius: 999px; background: #f8fafc; color: #475569; padding: 8px 12px; cursor: pointer; text-transform: capitalize; }
+.status-filter-button span { margin-left: 4px; font-weight: 800; }
+.status-filter-button.active { border-color: #2563eb; background: #2563eb; color: white; }
+.order-status { font-weight: 700; text-transform: capitalize; }
+.order-status-pending { color: #a16207; }.order-status-processing { color: #2563eb; }.order-status-shipped, .order-status-delivered { color: #15803d; }.order-status-cancelled { color: #b91c1c; }
+.empty-orders { padding: 16px 0; }
 
 .order-meta {
   text-align: right;

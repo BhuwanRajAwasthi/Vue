@@ -40,3 +40,9 @@ npm run dev
 ```sh
 npm run build
 ```
+
+## Deployment
+
+Copy `.env.example` to `.env.production` and set `VITE_API_URL` to the deployed backend URL before building. Configure the backend values in `Backend/.env`, including MongoDB, JWT, SMTP, Twilio, Cloudinary, and eSewa settings.
+
+The frontend host must serve `index.html` as a fallback for client-side routes such as `/login`, `/orders`, and `/product/:id`. Deploy the `dist` directory after `npm run build`.

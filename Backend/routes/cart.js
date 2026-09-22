@@ -17,8 +17,8 @@ router.put('/', requireAuth, async (req, res) => {
     for (const item of incoming) {
       const product = await Product.findById(item.product);
       const quantity = Number(item.quantity);
-      if (!product || !Number.isInteger(quantity) || quantity < 1) continue;
-      cart.push({ product: product._id, quantity, selected: item.selected !== false });
+      if (!product || product.stock <= 0 || !Number.isInteger(quantity) || quantity < 1) continue;
+      cart.push({ product: product._id, quantity, selected: item.selected !== false, selectedSize: item.selectedSize || '', selectedColor: item.selectedColor || '' });
     }
     const user = await User.findByIdAndUpdate(req.user._id, { cart }, { new: true }).populate('cart.product');
     res.json(user.cart);

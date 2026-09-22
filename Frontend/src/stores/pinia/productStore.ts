@@ -1,6 +1,6 @@
 
 import { defineStore } from "pinia";
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 export interface product {
     _id?: string
@@ -10,6 +10,10 @@ export interface product {
     description: string,
     category: string,
     image: string,
+    images?: string[]
+    sizes?: string[]
+    colors?: string[]
+       gender?: 'men' | 'women' | 'unisex',
     stock?: number,
     rating?: {
         rate: number,
@@ -21,6 +25,8 @@ export interface CartItem {
     product: product;
     quantity: number;
     selected: boolean;
+    selectedSize?: string;
+    selectedColor?: string;
 }
 
 
@@ -30,7 +36,10 @@ export const useProductStore = defineStore('products', () => {
     const cartCount = computed(() => CartItems.value.reduce((sum, item) => sum + item.quantity, 0));
     const cartTotal = computed(() => CartItems.value.reduce((sum, item) => sum + item.product.price * item.quantity, 0));
     const selectedCategory = ref<string>('All');
+    const selectedGender = ref<string>('all');
     const searchItem = ref<string>('');
+    const searchDraft = ref<string>('');
+    const isSearching = ref(false);
     const minPrice = ref<number | null>(null);
     const maxPrice = ref<number | null>(null);
     const availableCategories = computed(() => {
@@ -42,12 +51,23 @@ export const useProductStore = defineStore('products', () => {
         const query = searchItem.value.trim().toLowerCase()
 
         return products.value.filter(p =>
-            p.title.toLowerCase().includes(query) &&
+            (!query || p.title.toLowerCase().includes(query) || String(p.category || '').toLowerCase().includes(query)) &&
             (selectedCategory.value === 'All' || p.category === selectedCategory.value) &&
+               (selectedGender.value === 'all' || (p.gender || 'unisex') === selectedGender.value) &&
             (minPrice.value === null || p.price >= minPrice.value) &&
             (maxPrice.value === null || p.price <= maxPrice.value)
         )
     })
+
+    let searchTimer: ReturnType<typeof setTimeout> | undefined;
+    watch(searchDraft, (value) => {
+        isSearching.value = true;
+        if (searchTimer) clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            searchItem.value = value;
+            isSearching.value = false;
+        }, 1200);
+    });
 
 
 
@@ -67,17 +87,23 @@ export const useProductStore = defineStore('products', () => {
 
     }
 
-    async function addToCart(product: product, quantity: number) {
+    async function addToCart(product: product, quantity: number, options: { size?: string; color?: string } = {}) {
+        if (Number(product.stock || 0) <= 0) return false;
         const authStore = await import('./authStore').then(m => m.useAuthStore) ;
-        if (!authStore().token) return;
+        const auth = authStore();
+        if (!auth.token || auth.isAdmin) return false;
         const productId = (product as any)._id || product.id;
-        const existingItem = CartItems.value.find(item => (item.product as any)._id === productId || item.product.id === productId);
+        const existingItem = CartItems.value.find(item =>
+            ((item.product as any)._id === productId || item.product.id === productId) &&
+            item.selectedSize === options.size && item.selectedColor === options.color
+        );
         if (existingItem) {
             existingItem.quantity += quantity;
         } else {
-            CartItems.value.push({ product, quantity, selected: true });
+            CartItems.value.push({ product, quantity, selected: true, selectedSize: options.size, selectedColor: options.color });
         }
         await saveCart();
+        return true;
         }
 
     async function saveCart() {
@@ -88,7 +114,7 @@ export const useProductStore = defineStore('products', () => {
         await fetch(`${base}/cart`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.token}` },
-            body: JSON.stringify({ items: CartItems.value.map(item => ({ product: (item.product as any)._id || item.product.id, quantity: item.quantity, selected: item.selected })) })
+            body: JSON.stringify({ items: CartItems.value.map(item => ({ product: (item.product as any)._id || item.product.id, quantity: item.quantity, selected: item.selected, selectedSize: item.selectedSize, selectedColor: item.selectedColor })) })
         });
     }
 
@@ -117,7 +143,7 @@ export const useProductStore = defineStore('products', () => {
         const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
         const url = `${base}/orders`;
         // build items array
-        const items = CartItems.value.filter(i => i.selected).map(i => ({ product: (i.product as any)._id || (i.product as any).id, quantity: i.quantity }));
+        const items = CartItems.value.filter(i => i.selected).map(i => ({ product: (i.product as any)._id || (i.product as any).id, quantity: i.quantity, selectedSize: i.selectedSize, selectedColor: i.selectedColor }));
         // auth token from auth store
         try {
             const authStore = await import('./authStore').then(m => m.useAuthStore) ;
@@ -139,7 +165,10 @@ export const useProductStore = defineStore('products', () => {
     return {
         products,
         selectedCategory,
+        selectedGender,
         searchItem,
+        searchDraft,
+        isSearching,
         minPrice,
         maxPrice,
         filteredProducts,

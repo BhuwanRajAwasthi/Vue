@@ -1,6 +1,7 @@
 const express = require('express');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { sendOrderConfirmation } = require('../utils/mailer');
 
@@ -14,14 +15,43 @@ router.post('/', requireAuth, async (req, res) => {
     for (const it of items) {
       const product = await Product.findById(it.product);
       if (!product) return res.status(400).json({ message: 'Product not found' });
-      orderItems.push({ product: product._id, quantity: it.quantity, price: product.price });
+      if (product.stock <= 0) return res.status(400).json({ message: `${product.title} is out of stock` });
+      if (!Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > product.stock) {
+        return res.status(400).json({ message: `${product.title} does not have enough stock` });
+      }
+      orderItems.push({
+        product: product._id,
+        title: product.title,
+        image: product.image || (product.images && product.images[0]) || '',
+        category: product.category || '',
+        description: product.description || '',
+        quantity: it.quantity,
+        price: product.price,
+        selectedSize: it.selectedSize || '',
+        selectedColor: it.selectedColor || ''
+      });
       subtotal += product.price * it.quantity;
     }
     const deliveryFee = 50;
     const total = subtotal + deliveryFee;
     const order = new Order({ user: req.user._id, items: orderItems, shippingAddress, payment, subtotal, deliveryFee, total });
     await order.save();
-    sendOrderConfirmation(order, req.user).catch(err => console.error('Order email failed:', err.message));
+
+    // Decrement stock for ordered items
+    for (const it of orderItems) {
+      await Product.findByIdAndUpdate(it.product, { $inc: { stock: -it.quantity } });
+    }
+
+    // Remove purchased items from user's persistent cart
+    const purchasedIds = orderItems.map(it => it.product);
+    await User.findByIdAndUpdate(req.user._id, {
+      $pull: { cart: { product: { $in: purchasedIds } } }
+    });
+
+    // Populate order items for rich email confirmation
+    const populatedOrder = await Order.findById(order._id).populate('items.product');
+    sendOrderConfirmation(populatedOrder || order, req.user).catch(err => console.error('Order email failed:', err.message));
+
     res.status(201).json(order);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

@@ -14,6 +14,9 @@ const address = ref('')
 const city = ref('')
 const location = ref<{ latitude: number; longitude: number }>()
 const error = ref('')
+const success = ref('')
+const registrationSubmitted = ref(false)
+const verificationCode = ref('')
 const loading = ref(false)
 
 if (navigator.geolocation) {
@@ -24,13 +27,28 @@ if (navigator.geolocation) {
 
 async function handleRegister() {
   error.value = ''
+  success.value = ''
   loading.value = true
 
   try {
-    await authStore.register({ name: name.value, email: email.value, password: password.value, phone: phone.value, address: address.value, city: city.value, location: location.value })
-    router.push('/')
+    const result = await authStore.register({ name: name.value, email: email.value, password: password.value, phone: phone.value, address: address.value, city: city.value, location: location.value })
+    registrationSubmitted.value = true
+    success.value = result.message || 'Account created. Check your email to verify your account.'
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Registration failed'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function verifyEmail() {
+  error.value = ''
+  loading.value = true
+  try {
+    await authStore.verifyEmailOtp(email.value, verificationCode.value)
+    router.push('/')
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Email verification failed'
   } finally {
     loading.value = false
   }
@@ -88,7 +106,7 @@ function loginWithGithub() {
         </span>
       </div>
 
-      <form class="space-y-4" @submit.prevent="handleRegister">
+      <form v-if="!registrationSubmitted" class="space-y-4" @submit.prevent="handleRegister">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
           <input
@@ -138,6 +156,7 @@ function loginWithGithub() {
         </div>
 
         <p v-if="error" class="text-red-500 text-sm">{{ error }}</p>
+        <p v-if="success" class="text-green-700 text-sm">{{ success }}</p>
 
         <button
           type="submit"
@@ -152,6 +171,14 @@ function loginWithGithub() {
             Already have an account? Sign in
           </router-link>
         </div>
+      </form>
+      <form v-else class="space-y-4" @submit.prevent="verifyEmail">
+        <p class="text-sm text-gray-600">Enter the six-digit code sent to <strong>{{ email }}</strong>.</p>
+        <input v-model="verificationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="Enter email OTP" class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm" required />
+        <p v-if="error" class="text-red-500 text-sm">{{ error }}</p>
+        <button type="submit" :disabled="loading" class="w-full bg-[#15171a] text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-60 cursor-pointer shadow-sm">
+          {{ loading ? 'Verifying...' : 'Verify email' }}
+        </button>
       </form>
     </div>
   </div>

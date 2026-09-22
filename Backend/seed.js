@@ -37,15 +37,29 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
     const raw = fs.readFileSync(jsonPath, 'utf8');
     const productsData = JSON.parse(raw);
 
-    const formattedProducts = productsData.map(item => ({
-      title: item.name,
-      description: item.description,
-      category: item.category,
-      price: item.price,
-      stock: item.stock,
-      brand: item.brand || '',
-      image: item.image || ''
-    }));
+    const formattedProducts = productsData.map((item, index) => {
+      const baseSeed = item.image || `https://picsum.photos/seed/ecommerce-${index + 1}/800/800`;
+      const cleanSeed = baseSeed.replace(/\/800\/800$/, '');
+      const images = [
+        baseSeed,
+        `${cleanSeed}-angle1/800/800`,
+        `${cleanSeed}-angle2/800/800`,
+        `${cleanSeed}-detail/800/800`
+      ];
+
+      return {
+        title: item.name,
+        description: item.description,
+        category: item.category,
+        price: item.price,
+        stock: item.stock,
+        brand: item.brand || '',
+        image: baseSeed,
+        images,
+        sizes: item.sizes || (item.category === 'Footwear' ? ['39', '40', '41', '42'] : ['S', 'M', 'L', 'XL']),
+        colors: item.colors || ['Black', 'White', 'Navy']
+      };
+    });
 
     const count = await Product.countDocuments();
 
@@ -53,7 +67,13 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
       await Product.insertMany(formattedProducts);
       console.log(`Inserted ${formattedProducts.length} products into MongoDB`);
     } else {
-      console.log('Products already exist, skipping insert');
+      for (const product of formattedProducts) {
+        await Product.updateOne(
+          { title: product.title },
+          { $set: { sizes: product.sizes, colors: product.colors, images: product.images, image: product.image } }
+        );
+      }
+      console.log('Products already exist, backfilled multi-images, size, and color options');
     }
 
     process.exit(0);

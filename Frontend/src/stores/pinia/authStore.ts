@@ -19,8 +19,40 @@ export const useAuthStore = defineStore('auth', () => {
     const res = await fetch(`${base}/auth/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })
     })
-    if (!res.ok) throw new Error('Login failed')
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Login failed')
+    saveToken(data.token)
+    user.value = data.user
+    return data
+  }
+
+  async function resendEmailVerification(email: string) {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+    const res = await fetch(`${base}/auth/resend-email-verification`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Unable to send verification email')
+    return data
+  }
+
+  async function requestPhoneOtp(phone: string) {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+    const res = await fetch(`${base}/auth/phone/request-otp`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Unable to send verification code')
+    return data
+  }
+
+  async function verifyPhoneOtp(phone: string, code: string) {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+    const res = await fetch(`${base}/auth/phone/verify-otp`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, code })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Unable to verify code')
     saveToken(data.token)
     user.value = data.user
     return data
@@ -36,6 +68,20 @@ export const useAuthStore = defineStore('auth', () => {
       throw new Error(err.message || 'Register failed')
     }
     const data = await res.json()
+    saveToken(data.token)
+    user.value = data.user
+    return data
+  }
+
+  async function verifyEmailOtp(email: string, code: string) {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+    const res = await fetch(`${base}/auth/verify-email-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Unable to verify email')
     saveToken(data.token)
     user.value = data.user
     return data
@@ -58,8 +104,8 @@ export const useAuthStore = defineStore('auth', () => {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token.value}` },
       body: JSON.stringify(profile)
     })
-    if (!res.ok) throw new Error('Unable to update profile')
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.message || 'Unable to update profile')
     user.value = data.user
     return data.user
   }
@@ -69,5 +115,5 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { token, user, isLoggedIn, isAdmin, saveToken, login, register, fetchMe, updateProfile, logout }
+  return { token, user, isLoggedIn, isAdmin, saveToken, login, resendEmailVerification, requestPhoneOtp, verifyPhoneOtp, register, verifyEmailOtp, fetchMe, updateProfile, logout }
 })

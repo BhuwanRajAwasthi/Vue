@@ -1,11 +1,33 @@
 @import "tailwindcss";
 
-:root { --brand-blue: #1769aa; --brand-blue-dark: #124d80; --brand-ink: #15233d; }
-body { background: #f7fbff; color: var(--brand-ink); }
-.site-header { background: #f7fbff !important; border-color: #d5e2f0 !important; }
-.nav-link, .logout { color: var(--brand-blue-dark) !important; }
-.avatar, .primary-button, .checkout-btn { background: var(--brand-blue) !important; }
-.hero-section { background: linear-gradient(130deg, #102f52 0%, #1769aa 55%, #3d8bc5 100%) !important; }
-.product-card, .order-card, .profile-card, .panel-card { border-color: #d5e2f0 !important; }
-.category-pill-btn.active, .category-pill-btn:hover, .btn-quick-add.added { background: var(--brand-blue) !important; border-color: var(--brand-blue) !important; }
-.search_input, .controls-bar input, .profile-card input, .profile-card select { border-color: #bfd4e8 !important; }
+:root {
+	--brand-ink: #15171a;
+	--brand-muted: #747b84;
+	--brand-surface: #ffffff;
+	--brand-background: #f1f3f5;
+	--brand-border: #dfe2e6;
+	--brand-soft: #fafbfc;
+	--brand-accent: #343a40;
+	--brand-success: #416f4b;
+	font-family: Inter, Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--brand-background); color: var(--brand-ink); }
+button, input, select, textarea { font-family: inherit; }
+
+/* Shared login-inspired surfaces and controls */
+.site-header { background: var(--brand-surface) !important; border-color: var(--brand-border) !important; }
+.brand, .nav-link, .logout { color: var(--brand-ink) !important; }
+.search_input, .controls-bar input, .controls-bar select, .profile-card input, .profile-card select, .form-card input, .form-card textarea { border-color: var(--brand-border) !important; background: var(--brand-soft) !important; color: var(--brand-ink) !important; }
+.search_input:focus, .controls-bar input:focus, .controls-bar select:focus, .profile-card input:focus, .profile-card select:focus, .form-card input:focus, .form-card textarea:focus { outline: 0; border-color: #737b84 !important; box-shadow: 0 0 0 3px rgba(85, 93, 102, .12); }
+.avatar, .primary-button, .checkout-btn, .btn-primary, .btn-buy, .btn-cart, .btn-subscribe { background: var(--brand-ink) !important; color: #fff !important; }
+.primary-button:hover, .checkout-btn:hover, .btn-primary:hover, .btn-buy:hover, .btn-cart:hover, .btn-subscribe:hover { background: var(--brand-accent) !important; }
+.product-card, .order-card, .profile-card, .panel-card, .summary, .cart-item { border-color: var(--brand-border) !important; background: var(--brand-surface) !important; box-shadow: 0 12px 30px rgba(20, 25, 32, .06); }
+.category-pill-btn.active, .category-pill-btn:hover, .btn-quick-add.added, .status-filter button.active { background: var(--brand-ink) !important; border-color: var(--brand-ink) !important; color: #fff !important; }
+.hero-section { background: var(--brand-background) !important; color: var(--brand-ink) !important; }
+.hero-section h1, .hero-section h2, .catalog-section h2, .product-title, .orders-page h1, .profile-card h1, .page-shell h1 { color: var(--brand-ink) !important; }
+.hero-eyebrow, .kicker, .eyebrow, .section-kicker { color: var(--brand-muted) !important; }
+.pagination button.active { background: var(--brand-ink) !important; border-color: var(--brand-ink) !important; }
+.pagination button { border-color: var(--brand-border) !important; color: var(--brand-ink) !important; background: var(--brand-surface) !important; }
+.site-footer { background: var(--brand-ink) !important; }
